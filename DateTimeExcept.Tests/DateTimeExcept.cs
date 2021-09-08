@@ -48,8 +48,20 @@ namespace DateTimeExcept.Tests
 		{
 			if (excludeItems == null) return new List<DateTimeDuration> {source};
 
+			// 確保每一個excludeItems都在 source區段內
+			var excludeItems2 = excludeItems.ToArray();
+			for (int i = 0; i < excludeItems2.Length; i++)
+			{
+				excludeItems2[i] = excludeItems2[i].EnsureInDuration(source);
+			}
+
+			// 將excludeItems重疊的合併
+			var excludeItems3 = excludeItems2.Dedupe();
+
+
+			// 開始進行區段裁切
 			var result = new List<DateTimeDuration>();
-			foreach (var duration in excludeItems.OrderBy(x => x.Begin))
+			foreach (var duration in excludeItems3.OrderBy(x => x.Begin))
 			{
 				if (source.Begin < duration.Begin)
 				{ // 切出左側一段
@@ -79,6 +91,51 @@ namespace DateTimeExcept.Tests
 			var begin = source.Begin <= limit.Begin ? limit.Begin : source.Begin;
 			var end = source.End >= limit.End ? limit.End : source.End;
 
+			return new DateTimeDuration(begin, end);
+		}
+
+		/// <summary>
+		/// 將重覆的區段合併成一段
+		/// </summary>
+		/// <param name="source"></param>
+		/// <returns></returns>
+		public static IEnumerable<DateTimeDuration> Dedupe(this IEnumerable<DateTimeDuration> source)
+		{
+			if (source == null) return Enumerable.Empty<DateTimeDuration>();
+			if (source.Count() <= 1) return source;
+
+			var result = new List<DateTimeDuration>();
+			DateTimeDuration? currentItem = null;
+			foreach (var duration in source.OrderBy(x=>x.Begin))
+			{
+				if (currentItem == null)
+				{
+					currentItem = duration;
+					continue;
+				}
+				//duration的begin在currentItem的範圍外,就將currentItem加進result
+				if (duration.Begin > currentItem.Value.End)
+				{
+					result.Add(currentItem.Value);
+					currentItem = duration;
+					continue;
+				}
+
+				// duration的begin落在 currentItem範圍內,就合併
+				if (duration.Begin <= currentItem.Value.End)
+				{
+					currentItem = currentItem.Value.Merge(duration);
+					continue;
+				}
+			}
+			result.Add(currentItem.Value);
+			return result;
+		}
+
+		private static DateTimeDuration Merge(this DateTimeDuration source, DateTimeDuration others)
+		{
+			var begin = source.Begin;
+			var end = others.End <= source.End ? source.End : others.End;
 			return new DateTimeDuration(begin, end);
 		}
 	}
