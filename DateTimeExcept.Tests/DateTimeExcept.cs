@@ -37,10 +37,10 @@ namespace DateTimeExcept.Tests
 	public static class DateTimeDurationExts
 	{
 		/// <summary>
-		/// 
+		/// 將 source根據 excludeItems 切割成多段,並排除 excludeItems 部份
 		/// </summary>
-		/// <param name="source"></param>
-		/// <param name="excludeItems">處理過,完全不會有重疊的區段</param>
+		/// <param name="source">原始區段</param>
+		/// <param name="excludeItems">處理過,完全不會有重疊的區段,如果範圍超過source的起迄,也請自行先刪除</param>
 		/// <returns></returns>
 		public static IEnumerable<DateTimeDuration> Except(
 			this DateTimeDuration source,
@@ -66,6 +66,20 @@ namespace DateTimeExcept.Tests
 			if (source.Begin < source.End) result.Add(source);
 
 			return result;
+		}
+
+		/// <summary>
+		/// 確保source的前後範圍不會超過 limit
+		/// </summary>
+		/// <param name="source"></param>
+		/// <param name="limit"></param>
+		/// <returns></returns>
+		public static DateTimeDuration EnsureInDuration(this DateTimeDuration source, DateTimeDuration limit)
+		{
+			var begin = source.Begin <= limit.Begin ? limit.Begin : source.Begin;
+			var end = source.End >= limit.End ? limit.End : source.End;
+
+			return new DateTimeDuration(begin, end);
 		}
 	}
 }
